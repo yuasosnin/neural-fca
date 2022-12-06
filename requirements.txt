@@ -1,0 +1,10 @@
+torch
+sparselinear
+torch-sparse
+torch-scatter
+bintable
+git+https://github.com/EgorDudyrev/FCApy.git#egg=fcapy[all]
+matplotlib
+pandas
+numpy
+networkx
