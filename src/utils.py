@@ -6,6 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 class DataCollection:
     def __init__(self, x_bool, x_num, y, batch_size=64):
+        self.batch_size = batch_size
         self.x_bool = self.split(x_bool)
         self.x_num = self.split(x_num)
         self.y = self.split(y)
