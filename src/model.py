@@ -3,6 +3,7 @@ from typing import *
 from copy import copy
 from dataclasses import dataclass
 import networkx as nx
+import matplotlib.pyplot as plt
 
 from fcapy.lattice.formal_concept import FormalConcept
 from fcapy.poset import POSet
@@ -14,12 +15,17 @@ from sparselinear import SparseLinear
 
     
 class ConceptNetwork(nn.Sequential):
-    def __init__(self, lattice, nonlinearity: Callable = nn.ReLU):
-        attributes = tuple(lattice[lattice.bottom].intent)
-        self._poset = self._poset_from_best_concepts(lattice, attributes)
+    def __init__(self, concepts, nonlinearity: Callable = nn.ReLU):
+        self._poset = self._poset_from_best_concepts(concepts)
         self._spec = self._get_layer_specifications(self._poset)
         layers = self._get_layers_from_connections(self._spec, nonlinearity)
         super().__init__(*layers)
+
+    def _get_attributes(self, concepts):
+        attrs = set()
+        for c in concepts:
+            attrs |= set(c.intent)
+        return tuple(attrs)
     
     @dataclass
     class _POSetElement:
@@ -42,8 +48,8 @@ class ConceptNetwork(nn.Sequential):
         def __hash__(self):
             return hash(self.intent)
 
-    def _poset_from_best_concepts(
-            self, best_concepts: List[FormalConcept], attributes: Tuple[str]) -> POSet:
+    def _poset_from_best_concepts(self, best_concepts: List[FormalConcept]) -> POSet:
+        attributes = self._get_attributes(best_concepts)
         poset = POSet(best_concepts)
 
         concepts = {self._POSetElement(c.intent) for c in poset}
@@ -82,7 +88,7 @@ class ConceptNetwork(nn.Sequential):
             current_level = next_level
         return spec
     
-    def networkx_graph(self):
+    def to_networkx(self):
         pos = {}
         edges = {}
         total_nodes = 0
@@ -109,7 +115,18 @@ class ConceptNetwork(nn.Sequential):
 
         layers = [layer for ll in linear_layers for layer in [ll, nonlinearity()]][:-2] + [nn.Linear(in_features, 1), nn.Sigmoid()]
         return layers
-    
+
+    def plot_network(self, ax=None, orientation='horizontal', **nx_kwargs):
+        if ax is None:
+            ax = plt.gca()
+
+        g, pos, weights = self.to_networkx()
+        if orientation == 'horizontal':
+            pos = {node: (-y, x) for node, (x,y) in pos.items()}
+        nx.draw(
+            g, pos, ax=ax, edge_color=[weights[frozenset((u,v))] for u,v in g.edges], **nx_kwargs)
+
+
 def get_weights(x):
     if isinstance(x, SparseLinear):
         w = x.weight.values()
